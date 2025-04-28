@@ -1,0 +1,359 @@
+// Model of Starburst amacrine cell
+//**************************************************************//
+//						The Parameters
+//**************************************************************//
+load_file("nrngui.hoc")
+tstop = 500
+steps_per_ms = 40
+dt = 0.025
+temp= 35
+ra     = 75
+// ra     = 250
+rm     = 10000
+c_m       = 1
+// Resting membrane potential of SAC- Source 1: -50mV
+// Source 2: -70 mV
+// Bipolar cell inputs within 100 μm radius of dendritic field
+v_init    = -65
+celsius   = temp
+// Active parameters
+tauca=30
+// gcan=0.007- for varicosity alone simulation
+// gcan=0.01 for Kv3 simulation
+// gcan=0.008- used for excite figures
+gcan=0.01
+p_capq=5e-8
+// 5e-8- original value	
+// Intial channel density of the Kv31 channels (at soma)- 0.012 (for excitation plot figure)
+A=0.01
+// A=0.012 for Kv3 simulation
+decay_distance_rate=45
+// --------------------------------------------------------------
+forall delete_section()
+xopen("SAC_model_varicos.hoc")// With varicosities
+// xopen("SAC_model.hoc") // Without varicosities
+proc setpassive() {
+	soma {
+	  	insert pas
+	  	cm = c_m 
+	  	e_pas = v_init
+		Ra=ra
+		g_pas=1/rm
+	}
+	forsec basal {
+		insert pas
+		cm = c_m 
+		e_pas = v_init
+		Ra=ra
+		g_pas=(1/rm)
+	}
+}
+setpassive()
+access soma
+distance()
+coord_cadifus()
+// --------------------------------------------------------------
+totcomp=0
+forall { 
+	nseg = int((L/(0.1*lambda_f(100))+.9)/2)*2 + 1  
+	totcomp=totcomp+nseg
+}
+printf("Total number of compartments: %d\n", totcomp)
+objref sh
+sh = new Shape()
+// --------------------------------------------------------------
+access soma
+// insert cad
+// soma tauca_cad=tauca
+insert cadifus
+// insert can
+// soma gcanbar_can=gcan
+// insert CaPQ
+// soma pmax_CaPQ=p_capq
+insert Kv31
+soma gk_Kv31=A
+forsec basal {
+	xdist=distance(0.5)
+	if (xdist>140){
+		insert can
+		gcanbar_can=gcan
+		insert CaPQ
+		pmax_CaPQ=p_capq
+		// insert cad 
+		// tauca_cad=tauca
+	}
+	insert Kv31
+	insert cadifus
+}
+forsec basal{
+	for (x){// Loops through all segments of the section
+	    locdist=distance(x)
+		gk_Kv31(x)= A*exp(-locdist/decay_distance_rate)
+	}
+}
+//forsec distal{
+	//ecl=-40
+//}
+cai0_ca_ion=50e-6	// 50nM is the initial intracellular Ca
+cao0_ca_ion=2
+
+proc update_ra(){
+	init()
+	forall {
+		Ra = ra
+	}
+	totcomp=0
+    forall { 
+	nseg = int((L/(0.1*lambda_f(100))+.9)/2)*2 + 1  
+	totcomp=totcomp+nseg
+    }
+    printf("Updated total number of compartments: %d\n", totcomp)
+}
+proc update_rm(){
+	init()
+	soma {
+		g_pas = (1/rm)
+	}
+	// Basal section has all the dendrites
+	forsec basal {
+		g_pas = (1/rm)
+	}
+	totcomp=0
+    forall { 
+	nseg = int((L/(0.1*lambda_f(100))+.9)/2)*2 + 1  
+	totcomp=totcomp+nseg
+    }
+    printf("Updated total number of compartments: %d\n", totcomp)
+}
+proc update_temp(){
+	init()
+	celsius = temp
+}
+//  proc update_Ca_decay(){
+// 	init()
+// 	forsec basal {
+// 	xdist=distance(0)
+// 	if (xdist>0){
+// 			tauca_cad=tauca
+// 	}
+// 	}
+// 	soma {
+//		tauca_cad=tauca
+// 	}
+// }
+proc update_gcan_con(){
+	init()
+	forall {
+		xdist=distance(0.5)
+		if (xdist>140){
+			gcanbar_can=gcan
+		}
+	}
+}
+proc update_gcaq_con(){
+	init()
+	forall {
+		xdist=distance(0.5)
+		if (xdist>140){
+			pmax_CaPQ=p_capq
+		}
+	}
+}
+proc update_gkv31_con(){
+	init()
+	forsec basal {
+		for(x){
+		locdist=distance(x)
+		gk_Kv31(x)= A*exp(-locdist/decay_distance_rate)
+		}
+	}
+	soma {
+		gk_Kv31= A
+	}
+}
+current_direc=1
+direction=current_direc
+current_speed=2000
+// direction=1- moving bar in one direction
+// Add a moving bar stimulus using x3d() of segments
+// Modelling the excitatory synapses from the bipolar cells
+objref synlist
+synlist = new List()
+objref ncl
+ncl=new List()
+N=292
+speed=current_speed
+// mbstim- moving bar stimulus
+objectvar syn[N+1], mb_stim[N+1], ncl_temp[N+1]
+proc create_synapse_bip() { local j,dist,cond_temp
+    j=$1
+	// $1: section number
+	access dend[j] 
+    dist=distance(0.5)
+	num_3d_points=n3d()
+	num_pos=int(num_3d_points/2)
+    // $2  : location along section (0 to 1)
+    if (dist<70){
+		    syn[j]= new AMPA()
+			dend[j] syn[j].loc($2)
+            syn[j].gmax      = 0.00003 // (umho)       maximum conductance
+			cond_temp= 0.00003
+			syn[j].tau		    = 40
+			// Intially taken as 100
+			syn[j].TRise		= 5
+			syn[j].Erev		= 0
+			syn[j].Deadtime	= 1
+			// syn[j].mg		= 2
+            // syn[j].gmax      = 0.00007 // (umho)       maximum conductance
+            // syn[j].tau		    = 30
+    }
+    if (dist>70){
+		    syn[j] = new AMPA() 
+			dend[j] syn[j].loc($2)
+            syn[j].gmax      = 0.0001 // (umho)       maximum conductance
+			cond_temp=0.0001
+            syn[j].tau		    = 8
+			syn[j].TRise		= 2
+            syn[j].Erev		= 0
+            syn[j].Deadtime	= 1
+    }
+    mb_stim[j]= new NetStim($2)
+    mb_stim[j].number=1
+	mb_stim[j].interval=1
+	mb_stim[j].noise=0
+	// mb.start shoulb be dependent on the x3d(num_pos+1)
+	// Speed of the moving bar- 500 um/s
+	speed=$4
+	// Width of the moving bar- 200 um
+	// width=100
+	// $3: direction of the moving bar- 1 or -1
+	dir=$3
+	start_pos=110*dir
+	// Within our time of simulation, we will have only single pre-synaptic spike
+	edge_time=(100)+(1000*((dir*(start_pos-x3d(num_pos)))/speed))
+	if (j==90){
+		printf("edge time_1_90: %f\n", edge_time)
+	}
+	if (j==291){
+		printf("edge time_1_291: %f\n", edge_time)
+	}
+	mb_stim[j].start=edge_time
+	// Connect NetStim to synaptic mechanism
+    ncl_temp[j] = new NetCon(mb_stim[j], syn[j], 0, 0, cond_temp)
+    synlist.append(syn[j])   
+	ncl.append(ncl_temp[j])
+}
+proc update_direction() {
+	init()
+	direction=current_direc
+    ncl.remove_all()
+    synlist.remove_all()
+    for (i=0; i<=N; i+=1){
+	// Create a new synapse at the location of the ith cell 
+	// Only add the synapse if distance(0.5) < 140- Proximal two-thirds
+	// Here, we take as 140- for the Model 1
+	access dend[i]
+	xdist=distance(0.5)
+	if (xdist<140){
+		create_synapse_bip(i,0.5,direction,speed)
+		// printf("Creating synapse at %d\n", i)
+	}
+    }
+    printf("Number of synapses (new): %d\n", synlist.count())
+    printf("Number of NetCon  (new): %d\n", ncl.count())
+}
+proc update_speed() {
+    init()
+    speed=current_speed
+    ncl.remove_all()
+    synlist.remove_all()
+    for (i=0; i<=N; i+=1){
+	// Create a new synapse at the location of the ith cell
+	// Only add the synapse if distance(0.5) < 140- Proximal two-thirds
+	// Proximal two-thirds
+	// Here, we take as 140- for the Model 1
+	access dend[i]
+	xdist=distance(0.5) 
+	if (xdist<140){
+		create_synapse_bip(i,0.5,direction,speed)
+		// printf("Creating synapse at %d\n", i)
+	}
+    }
+    printf("Number of synapses (new): %d\n", synlist.count())
+    printf("Number of NetCon  (new): %d\n", ncl.count())
+}
+proc update_rmp() {
+    init()
+    soma {
+        e_pas = v_init
+    }
+    // Basal section has all the dendrites
+    forsec basal {
+        e_pas = v_init
+    }
+}
+xpanel("Parameters")
+xvalue("Axial R","ra",1,"update_ra()",1,1)
+xvalue("Membrane R","rm",1,"update_rm()",1,1)	
+xvalue("Temperature","temp",1,"update_temp()",1,1)
+xvalue("Ca Decay","tauca",1,"update_Ca_decay()",1,1)
+xvalue("Ca-N type Conductance","gcan",1,"update_gcan_con()",1,1)
+xvalue("Ca-PQ type Permeability","p_capq",1,"update_gcaq_con()",1,1)
+xvalue("Direction of moving bar","current_direc",1,"update_direction()",1,1)
+xvalue("Speed of moving bar","current_speed",1,"update_speed()",1,1)
+xvalue("Kv31 Conductance","A",1,"update_gkv31_con()",1,1)
+xvalue("Resting Membrane Potential","v_init",1,"update_rmp()",1,1)
+xpanel()
+// ------------------------------------------------------------------
+nrncontrolmenu()  
+// newPlotV()
+objref g[20]
+ngraph=0
+proc addgraph() { local ii  // define subroutine to add a new graph
+                // addgraph("variable", minvalue, maxvalue)
+    ngraph = ngraph+1
+    ii = ngraph-1
+    g[ii] = new Graph()
+    g[ii].size(0,tstop,$2,$3)
+    g[ii].xaxis()
+    g[ii].yaxis()
+    g[ii].addvar($s1,1,0)
+    g[ii].save_name("graphList[0].")
+    graphList[0].append(g[ii])
+}
+addgraph("soma.v(0.5)",-100,100)
+g[0].addexpr("dend[273].v(0.9)",2,1)
+g[0].addexpr("dend[99].v(0.9)",3,1)
+// Left Quadrant
+addgraph("dend[261].v(0.9)",-100,100)
+addgraph("dend[262].v(0.9)",-100,100)	
+addgraph("dend[272].v(0.9)",-100,100)
+addgraph("dend[273].v(0.9)",-100,100)
+// Right Quadrant
+addgraph("dend[92].v(0.9)",-100,100)
+addgraph("dend[93].v(0.9)",-100,100)
+addgraph("dend[99].v(0.9)",-100,100)
+addgraph("dend[116].v(0.9)",-100,100)
+// g[0].exec_menu("Keep Lines")
+// g[1].exec_menu("Keep Lines")
+// g[2].exec_menu("Keep Lines")
+// g[3].exec_menu("Keep Lines")
+// g[4].exec_menu("Keep Lines")
+// Can add T-type Ca2+ current- if present in SAC
+for (i=0; i<=N; i+=1){
+	// Create a new synapse at the location of the ith cell
+	// Only add the synapse if distance(0.5) < 140- Input region
+	access dend[i]
+	xdist=distance(0.5)
+	// Bipolar cell synapses within 140 μm radius of dendritic field- Proximal two-thirds
+	if (xdist<140){
+		create_synapse_bip(i,0.5,direction,speed)
+		// printf("Creating synapse at %d\n", i)
+	}
+}
+// Print the count() of ncl and synlist
+printf("Number of synapses: %d\n", synlist.count())
+printf("Number of NetCon: %d\n", ncl.count())
+finitialize(v_init)
+//**************************************************************//
+run()
