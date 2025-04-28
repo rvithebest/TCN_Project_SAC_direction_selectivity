@@ -19,7 +19,7 @@ celsius   = temp
 // Active parameters
 tauca=30
 gcan=0.02
-p_capq=5e-8
+p_capq=0
 // 5e-8- original value	
 // Intial channel density of the Kv31 channels (at soma)
 A=0.015
