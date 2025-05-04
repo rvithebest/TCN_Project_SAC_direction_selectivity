@@ -11,23 +11,26 @@ ra     = 75
 // ra     = 250
 rm     = 10000
 c_m       = 1
-// Resting membrane potential of SAC- Source 1: -50mV
-// Source 2: -70 mV
-// Bipolar cell inputs within 100 μm radius of dendritic field
-v_init    = -70
+// Resting membrane potential of SAC- Source 1: -50mV (Rabbit)
+// Source 2: -60 to  -70 mV (Mice)
+// Bipolar cell inputs within the proximal two-thirds
+v_init    = -65
 celsius   = temp
 // Active parameters
 tauca=30
-gcan=0.02
+// gcan=0.012- for varicosity alone simulation
+// gcan=0.015 for Kv3 simulation
+gcan=0.015
 p_capq=0
 // 5e-8- original value	
 // Intial channel density of the Kv31 channels (at soma)
-A=0.015
+A=0.012
+// A=0.012 for Kv3 simulation
 decay_distance_rate=45
 // --------------------------------------------------------------
 forall delete_section()
-xopen("SAC_model_varicos.hoc")// With varicosities
-// xopen("SAC_model.hoc") // Without varicosities
+// xopen("SAC_model_varicos.hoc")// With varicosities
+xopen("SAC_model.hoc") // Without varicosities
 proc setpassive() {
 	soma {
 	  	insert pas
@@ -59,9 +62,9 @@ objref sh
 sh = new Shape()
 // --------------------------------------------------------------
 access soma
-insert cad
-soma tauca_cad=tauca
-// insert cadifus
+// insert cad
+// soma tauca_cad=tauca
+insert cadifus
 insert can
 soma gcanbar_can=gcan
 insert CaPQ
@@ -75,11 +78,11 @@ forsec basal {
 		gcanbar_can=gcan
 		insert CaPQ
 		pmax_CaPQ=p_capq
-		insert cad 
-		tauca_cad=tauca
+		// insert cad 
+		// tauca_cad=tauca
 	}
 	insert Kv31
-	// insert cadifus
+	insert cadifus
 }
 forsec basal{
 	for (x){// Loops through all segments of the section
@@ -230,10 +233,10 @@ proc update_direction() {
     for (i=0; i<=N; i+=1){
 	// Create a new synapse at the location of the ith cell 
 	// Only add the synapse if distance(0.5) < 135- Proximal two-thirds
-	// Here, we take as 160- for the Model 1
+	// Here, we take as 140- for the Model 1
 	access dend[i]
 	xdist=distance(0.5)
-	if (xdist<160){
+	if (xdist<140){
 		create_synapse_bip(i,0.5,direction,speed)
 		// printf("Creating synapse at %d\n", i)
 	}
@@ -250,10 +253,10 @@ proc update_speed() {
 	// Create a new synapse at the location of the ith cell
 	// Only add the synapse if distance(0.5) < 135- Proximal two-thirds
 	// Proximal two-thirds
-	// Here, we take as 160- for the Model 1
+	// Here, we take as 140- for the Model 1
 	access dend[i]
-	xdist=distance(0.5)
-	if (xdist<160){
+	xdist=distance(0.5) 
+	if (xdist<140){
 		create_synapse_bip(i,0.5,direction,speed)
 		// printf("Creating synapse at %d\n", i)
 	}
@@ -321,11 +324,11 @@ addgraph("dend[116].v(0.9)",-100,100)
 // Can add T-type Ca2+ current- if present in SAC
 for (i=0; i<=N; i+=1){
 	// Create a new synapse at the location of the ith cell
-	// Only add the synapse if distance(0.5) < 160- Input region
+	// Only add the synapse if distance(0.5) < 140- Input region
 	access dend[i]
 	xdist=distance(0.5)
 	// Bipolar cell synapses within 135 μm radius of dendritic field- Proximal two-thirds
-	if (xdist<160){
+	if (xdist<140){
 		create_synapse_bip(i,0.5,direction,speed)
 		// printf("Creating synapse at %d\n", i)
 	}
