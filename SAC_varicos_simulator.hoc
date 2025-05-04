@@ -11,20 +11,20 @@ ra     = 75
 // ra     = 250
 rm     = 10000
 c_m       = 1
-// Resting membrane potential of SAC- Source 1: -50mV
-// Source 2: -70 mV
-// Bipolar cell inputs within 100 μm radius of dendritic field
+// Resting membrane potential of SAC- Source 1: -50mV (Rabbit)
+// Source 2: -60 to  -70 mV (Mice)
+// Bipolar cell inputs within the proximal two-thirds
 v_init    = -65
 celsius   = temp
 // Active parameters
 tauca=30
 // gcan=0.007- for varicosity alone simulation
 // gcan=0.01 for Kv3 simulation
-gcan=0.01
-p_capq=5e-8
+gcan=0.012
+p_capq=0
 // 5e-8- original value	
 // Intial channel density of the Kv31 channels (at soma)
-A=0.01
+A=0
 // A=0.012 for Kv3 simulation
 decay_distance_rate=45
 // --------------------------------------------------------------
