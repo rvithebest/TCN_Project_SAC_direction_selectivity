@@ -10,4 +10,4 @@ SAC_Kv3_simulator.hoc
 SAC_excite_simulator.hoc
 SAC_inhibit_simulator.hoc
 SAC_inhibit_simulator_2.hoc
-Analysis files (Python)- Could be used to run the simulations (both directions), plot the voltage traces and quantify direction selectivity (Mutual information, Direction selectivity index)
+Analysis files (Python)- Could be used to run the simulations (both directions), plot the voltage traces, and quantify direction selectivity (Mutual information, Direction selectivity index)
